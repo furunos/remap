@@ -1,0 +1,17 @@
+@import 'src/variables';
+
+.firmware-form {
+  &-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+  }
+
+  &-form {
+    flex-grow: 1;
+  }
+
+  &-list {
+    flex-grow: 1;
+  }
+}
