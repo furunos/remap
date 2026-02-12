@@ -40,31 +40,6 @@ service cloud.firestore {
                 allow create, delete: if isAuthenticated()
                                          && (request.auth.uid == getDefinition(definitionID).data.author_uid);
             }
-
-            function getOrganization(organizationID) {
-                return get(/databases/$(database)/documents/organizations/v1/profiles/$(organizationID));
-            }
-
-            function isIndividualAuthor(requestAuthUid, resourceDefinition) {
-                return
-                    (isUndefined(resourceDefinition.data, 'author_type') || resourceDefinition.data.author_type == 'individual')
-                    &&
-                    (requestAuthUid == resourceDefinition.data.author_uid);
-            }
-
-            function isOrganizationAuthor(requestAuthUid, resourceDefinition) {
-                return
-                    (resourceDefinition.data.author_type == 'organization')
-                    &&
-                    (requestAuthUid in getOrganization(resourceDefinition.data.organization_id).data.members);
-            }
-
-            function isAuthor(requestAuthUid, resourceDefinition) {
-                return
-                    isIndividualAuthor(requestAuthUid, resourceDefinition)
-                    ||
-                    isOrganizationAuthor(requestAuthUid, resourceDefinition);
-            }
         }
 
         match /configurations/{configuration} {
@@ -98,31 +73,30 @@ service cloud.firestore {
 
         match /build/v1/firmwares/{definitionId}/keyboardFiles/{keyboardFileId} {
             allow create: if isAuthenticated()
-                             && (request.auth.uid == getDefinition(definitionId).data.author_uid);
+                             && isAuthor(request.auth.uid, getDefinition(definitionId));
             allow update: if isAuthenticated()
-                             && (request.auth.uid == getDefinition(definitionId).data.author_uid);
+                             && isAuthor(request.auth.uid, getDefinition(definitionId));
             allow delete: if isAuthenticated()
-                             && (request.auth.uid == getDefinition(definitionId).data.author_uid);
+                             && isAuthor(request.auth.uid, getDefinition(definitionId));
             allow read;
         }
 
         match /build/v1/firmwares/{definitionId}/keymapFiles/{keyboardFileId} {
             allow create: if isAuthenticated()
-                             && (request.auth.uid == getDefinition(definitionId).data.author_uid);
+                             && isAuthor(request.auth.uid, getDefinition(definitionId));
             allow update: if isAuthenticated()
-                             && (request.auth.uid == getDefinition(definitionId).data.author_uid);
+                             && isAuthor(request.auth.uid, getDefinition(definitionId));
             allow delete: if isAuthenticated()
-                             && (request.auth.uid == getDefinition(definitionId).data.author_uid);
+                             && isAuthor(request.auth.uid, getDefinition(definitionId));
             allow read;
         }
 
         match /build/v1/firmwares/{definitionId} {
             allow create: if isAuthenticated()
                              && (request.auth.uid == request.resource.data.uid)
-                             && (request.auth.uid == getDefinition(definitionId).data.author_uid);
+                             && isAuthor(request.auth.uid, getDefinition(definitionId));
             allow update: if isAuthenticated()
-                             && (request.auth.uid == resource.data.uid)
-                             && (request.auth.uid == getDefinition(definitionId).data.author_uid);
+                             && isAuthor(request.auth.uid, getDefinition(definitionId));
             allow read;
         }
 
@@ -193,17 +167,6 @@ service cloud.firestore {
                            && (request.auth.uid == userId);
         }
 
-        match /practices/v1/users/{userId}/keyboards/{keyboardId} {
-            allow create: if isAuthenticated()
-                             && (request.auth.uid == userId);
-            allow update: if isAuthenticated()
-                             && (request.auth.uid == userId);
-            allow delete: if isAuthenticated()
-                             && (request.auth.uid == userId);
-            allow read: if isAuthenticated()
-                           && (request.auth.uid == userId);
-        }
-
         function isAuthenticated() {
             return request.auth.uid != null;
         }
@@ -216,8 +179,44 @@ service cloud.firestore {
             return get(/databases/$(database)/documents/keyboards/v2/definitions/$(definitionID));
         }
 
+        function getOrganization(organizationID) {
+            return get(/databases/$(database)/documents/organizations/v1/profiles/$(organizationID));
+        }
+
+        function isIndividualAuthor(requestAuthUid, resourceDefinition) {
+            return
+                (isUndefined(resourceDefinition.data, 'author_type') || resourceDefinition.data.author_type == 'individual')
+                &&
+                (requestAuthUid == resourceDefinition.data.author_uid);
+        }
+
+        function isOrganizationAuthor(requestAuthUid, resourceDefinition) {
+            return
+                (resourceDefinition.data.author_type == 'organization')
+                &&
+                (requestAuthUid in getOrganization(resourceDefinition.data.organization_id).data.members);
+        }
+
+        function isAuthor(requestAuthUid, resourceDefinition) {
+            return
+                isIndividualAuthor(requestAuthUid, resourceDefinition)
+                ||
+                isOrganizationAuthor(requestAuthUid, resourceDefinition);
+        }
+
         function getWorkbenchProject(projectId) {
             return get(/databases/$(database)/documents/build/v1/projects/$(projectId));
+        }
+
+        match /practices/v1/users/{userId}/keyboards/{keyboardId} {
+            allow create: if isAuthenticated()
+                             && (request.auth.uid == userId);
+            allow update: if isAuthenticated()
+                             && (request.auth.uid == userId);
+            allow delete: if isAuthenticated()
+                             && (request.auth.uid == userId);
+            allow read: if isAuthenticated()
+                           && (request.auth.uid == userId);
         }
     }
 }
